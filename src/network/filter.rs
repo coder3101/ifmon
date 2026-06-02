@@ -16,10 +16,11 @@ pub fn filter_interfaces(interfaces: &[Interface]) -> Vec<Interface> {
             }
 
             // Exclude proprietary virtual interfaces without IPs
-            if matches!(iface.if_type, InterfaceType::ProprietaryVirtual) {
-                if iface.ipv4.is_empty() && iface.ipv6.is_empty() {
-                    return false;
-                }
+            if matches!(iface.if_type, InterfaceType::ProprietaryVirtual)
+                && iface.ipv4.is_empty()
+                && iface.ipv6.is_empty()
+            {
+                return false;
             }
 
             // Include physical network interfaces
