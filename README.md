@@ -3,7 +3,6 @@
 > A beautiful terminal-based network interface monitoring tool built with Rust and [ratatui](https://ratatui.rs/).
 
 [![Crates.io](https://img.shields.io/crates/v/ifmon.svg)](https://crates.io/crates/ifmon)
-[![Downloads](https://img.shields.io/crates/d/ifmon.svg)](https://crates.io/crates/ifmon)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)
 
@@ -47,7 +46,6 @@ cargo install ifmon
 git clone https://github.com/coder3101/ifmon.git
 cd ifmon
 cargo build --release
-# Binary will be at: target/release/ifmon
 ```
 
 ### Pre-built Binaries
@@ -98,14 +96,6 @@ Modern network monitoring tools are often complex or require root privileges. `i
 - **Zero configuration** - Just run it, no setup needed
 - **Clean output** - Focus on what matters: current speeds and trends
 - **Terminal-native** - Perfect for remote SSH sessions or tmux setups
-- **Efficient** - Uses Braille characters for high-resolution graphs in minimal space
-
-## Technical Details
-
-- **Update interval**: 500ms
-- **History window**: 100 data points (50 seconds)
-- **Graph rendering**: Braille dot markers (2×4 resolution per character)
-- **Scaling**: Fully dynamic based on observed traffic
 - **Platform support**: Cross-platform via `netdev` crate
 
 ## Requirements
@@ -122,57 +112,13 @@ cd ifmon
 cargo build --release
 ```
 
-The release binary includes size optimizations (LTO, stripped symbols) and will be available at `target/release/ifmon`.
-
-## Project Structure
-
-Clean, modular architecture for maintainability:
-
-```
-src/
-├── main.rs              Entry point and error handling
-├── app.rs               Application state and event loop
-├── types/
-│   └── history.rs       SpeedHistory data structure
-├── network/
-│   └── filter.rs        Interface filtering logic
-├── ui/
-│   ├── graphs.rs        RX/TX line chart rendering
-│   ├── interface.rs     Interface info table
-│   └── help.rs          Help screen
-└── utils/
-    └── format.rs        Byte/speed formatting utilities
-```
-
-## Contributing
-
-Contributions are welcome! Areas for improvement:
-
-- [ ] More graph types (bar charts, histograms)
-- [ ] Export statistics to CSV/JSON
-- [ ] Packet count tracking
-- [ ] Error/drop rate monitoring
-- [ ] Customizable update intervals
-- [ ] Color theme customization
-
-Please feel free to:
-- Report bugs via [GitHub Issues](https://github.com/coder3101/ifmon/issues)
-- Submit Pull Requests
-- Suggest new features
-
-## Roadmap
-
-- **v0.2.0**: Export functionality and packet statistics
-- **v0.3.0**: Configurable themes and layouts
-- **v1.0.0**: Stable API with plugin support
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Author
 
-**Ashar Khan** - [coder3101](https://github.com/coder3101)
+**Mohammad Ashar Khan** - [coder3101](https://github.com/coder3101)
 
 ## Acknowledgments
 
@@ -190,10 +136,10 @@ Inspired by classic tools: `iftop`, `nethogs`, `bmon`
 - **[bottom](https://github.com/ClementTsang/bottom)** - System monitor with network stats
 - **[zenith](https://github.com/bvaisvil/zenith)** - htop-like system monitor
 
-`ifmon` focuses specifically on interface-level monitoring with zero configuration.
+`ifmon` focuses specifically on interface-level monitoring with zero configuration and no `sudo` access.
 
 ---
 
-**Made with ❤️ by [Ashar Khan](https://github.com/coder3101)**
+**Made with ❤️ by [Mohammad Ashar Khan](https://github.com/coder3101)**
 
 If you find this useful, consider giving it a ⭐ on [GitHub](https://github.com/coder3101/ifmon)!
