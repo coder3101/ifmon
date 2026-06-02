@@ -1,10 +1,14 @@
 [package]
 name = "ifmon"
 version = "0.1.0"
-description = "Interface monitoring CLI"
+description = "A beautiful terminal-based network interface monitoring tool"
 authors = ["coder3101 <ashar786khan@gmail.com>"]
 license = "MIT"
-edition = "2024"
+edition = "2021"
+repository = "https://github.com/coder3101/ifmon"
+keywords = ["network", "monitoring", "tui", "terminal", "interface"]
+categories = ["command-line-utilities", "network-programming"]
+readme = "README.md"
 
 [dependencies]
 crossterm = "0.28.1"

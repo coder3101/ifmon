@@ -1,4 +1,8 @@
 mod app;
+mod network;
+mod types;
+mod ui;
+mod utils;
 
 use crate::app::App;
 
