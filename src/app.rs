@@ -1,14 +1,14 @@
 use std::time::{Duration, Instant};
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use netdev::{get_interfaces, Interface, stats::counters::InterfaceStats};
+use netdev::{get_interfaces, stats::counters::InterfaceStats, Interface};
 use ratatui::{
-    DefaultTerminal, Frame,
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     symbols,
     text::{Line, Span},
     widgets::{Block, Borders, Tabs},
+    DefaultTerminal, Frame,
 };
 
 use crate::network::filter_interfaces;
@@ -44,7 +44,7 @@ impl App {
     pub fn new() -> Self {
         let all_interfaces: Vec<Interface> = get_interfaces().into_iter().collect();
         let filtered = filter_interfaces(&all_interfaces);
-        
+
         Self {
             last_stats: None,
             last_update_time: None,
@@ -64,7 +64,7 @@ impl App {
             ip_scroll_offset: 0,
         }
     }
-    
+
     /// Get the list of active interfaces based on filter setting
     fn get_active_interfaces(&self) -> &Vec<Interface> {
         if self.show_all_interfaces {
@@ -73,7 +73,7 @@ impl App {
             &self.filtered_interfaces
         }
     }
-    
+
     /// Toggle between showing all interfaces and filtered interfaces
     fn toggle_interface_filter(&mut self) {
         self.show_all_interfaces = !self.show_all_interfaces;
@@ -87,7 +87,7 @@ impl App {
         self.reset_stats();
         self.ip_scroll_offset = 0;
     }
-    
+
     /// Reset all statistics
     fn reset_stats(&mut self) {
         self.last_stats = None;
@@ -103,7 +103,9 @@ impl App {
 
     /// Get the currently selected interface
     fn get_selected_interface(&mut self) -> Option<Interface> {
-        self.get_active_interfaces().get(self.selected_interface).cloned()
+        self.get_active_interfaces()
+            .get(self.selected_interface)
+            .cloned()
     }
 
     /// Run the application's main loop
@@ -111,7 +113,7 @@ impl App {
         self.running = true;
         while self.running {
             terminal.draw(|frame| self.render(frame))?;
-            
+
             // Poll for events with timeout to allow UI updates
             if event::poll(UPDATE_INTERVAL)? {
                 self.handle_crossterm_events()?;
@@ -138,26 +140,30 @@ impl App {
         .blue()
         .centered();
 
-        let tabs = Tabs::new(self.get_active_interfaces().iter().map(|i| i.name.to_string()))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::DarkGray))
-                    .title(if self.show_all_interfaces {
-                        " All Interfaces "
-                    } else {
-                        " Physical Interfaces "
-                    })
-            )
-            .style(Style::default().fg(Color::White))
-            .highlight_style(
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD)
-                    .bg(Color::DarkGray)
-            )
-            .select(self.selected_interface)
-            .divider(symbols::DOT);
+        let tabs = Tabs::new(
+            self.get_active_interfaces()
+                .iter()
+                .map(|i| i.name.to_string()),
+        )
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::DarkGray))
+                .title(if self.show_all_interfaces {
+                    " All Interfaces "
+                } else {
+                    " Physical Interfaces "
+                }),
+        )
+        .style(Style::default().fg(Color::White))
+        .highlight_style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+                .bg(Color::DarkGray),
+        )
+        .select(self.selected_interface)
+        .divider(symbols::DOT);
 
         let block = Block::default()
             .borders(Borders::ALL)
@@ -166,7 +172,7 @@ impl App {
             .title_bottom(
                 Line::from(" [q]uit | [Tab] Switch | [h]elp | [f]ilter ")
                     .alignment(Alignment::Center)
-                    .style(Style::default().fg(Color::DarkGray))
+                    .style(Style::default().fg(Color::DarkGray)),
             );
         let area = block.inner(frame.area());
 
@@ -183,10 +189,7 @@ impl App {
 
     /// Render the interface details and graphs
     fn render_interface(&mut self, frame: &mut Frame, area: Rect) {
-        let layout = Layout::vertical([
-            Constraint::Length(14),
-            Constraint::Fill(1),
-        ]);
+        let layout = Layout::vertical([Constraint::Length(14), Constraint::Fill(1)]);
         let sections = layout.split(area);
         let top_area = sections[0];
         let bottom_area = sections[1];
@@ -194,25 +197,29 @@ impl App {
         if let Some(mut interface) = self.get_selected_interface() {
             // Update stats FIRST
             let _ = interface.update_stats();
-            
+
             let now = Instant::now();
-            
+
             // Then calculate speed based on updated stats
             if let Some(last_stats) = &self.last_stats {
                 if let Some(last_time) = self.last_update_time {
                     let elapsed = now.duration_since(last_time).as_secs_f64();
-                    if elapsed > 0.1 { // Only update if enough time has passed
+                    if elapsed > 0.1 {
+                        // Only update if enough time has passed
                         if let Some(current_stats) = &interface.stats {
-                            let rx_diff = current_stats.rx_bytes.saturating_sub(last_stats.rx_bytes) as f64;
-                            let tx_diff = current_stats.tx_bytes.saturating_sub(last_stats.tx_bytes) as f64;
+                            let rx_diff =
+                                current_stats.rx_bytes.saturating_sub(last_stats.rx_bytes) as f64;
+                            let tx_diff =
+                                current_stats.tx_bytes.saturating_sub(last_stats.tx_bytes) as f64;
                             self.rx_speed = rx_diff / elapsed;
                             self.tx_speed = tx_diff / elapsed;
-                            
+
                             self.peak_rx_speed = self.peak_rx_speed.max(self.rx_speed);
                             self.peak_tx_speed = self.peak_tx_speed.max(self.tx_speed);
-                            
-                            self.history.push(self.rx_speed, self.tx_speed, HISTORY_SIZE);
-                            
+
+                            self.history
+                                .push(self.rx_speed, self.tx_speed, HISTORY_SIZE);
+
                             // Update the last stats and time
                             self.last_stats = interface.stats.clone();
                             self.last_update_time = Some(now);
@@ -224,7 +231,7 @@ impl App {
                 self.last_stats = interface.stats.clone();
                 self.last_update_time = Some(now);
             }
-            
+
             if let Some(stats) = &interface.stats {
                 self.total_rx_bytes = stats.rx_bytes;
                 self.total_tx_bytes = stats.tx_bytes;
@@ -250,7 +257,7 @@ impl App {
             self.peak_rx_speed,
             self.total_rx_bytes,
         );
-        
+
         render_tx_graph(
             frame,
             tx_graph_area,

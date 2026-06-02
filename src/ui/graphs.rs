@@ -1,10 +1,10 @@
 use ratatui::{
-    Frame,
     layout::{Alignment, Rect},
     style::{Color, Modifier, Style},
     symbols,
     text::Span,
     widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Paragraph},
+    Frame,
 };
 
 use crate::types::SpeedHistory;
@@ -26,7 +26,7 @@ pub fn render_rx_graph(
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(Color::Cyan))
                     .title(" RX Speed History ")
-                    .title_style(Style::default().fg(Color::Cyan))
+                    .title_style(Style::default().fg(Color::Cyan)),
             )
             .alignment(Alignment::Center);
         frame.render_widget(placeholder, area);
@@ -34,7 +34,8 @@ pub fn render_rx_graph(
     }
 
     // Prepare data for chart
-    let data: Vec<(f64, f64)> = history.timestamps
+    let data: Vec<(f64, f64)> = history
+        .timestamps
         .iter()
         .zip(history.rx_speeds.iter())
         .map(|(t, s)| (*t, *s))
@@ -42,17 +43,20 @@ pub fn render_rx_graph(
 
     // Dynamic scaling - use actual max
     let max_rx = history.max_rx.max(1.0); // Ensure minimum scale
-    
-    let min_time = history.timestamps.first().copied().unwrap_or(0.0);
-    let max_time = history.timestamps.last().copied().unwrap_or(100.0).max(min_time + 1.0); // Ensure range
 
-    let datasets = vec![
-        Dataset::default()
-            .marker(symbols::Marker::Braille)
-            .graph_type(GraphType::Line)
-            .style(Style::default().fg(Color::Cyan))
-            .data(&data),
-    ];
+    let min_time = history.timestamps.first().copied().unwrap_or(0.0);
+    let max_time = history
+        .timestamps
+        .last()
+        .copied()
+        .unwrap_or(100.0)
+        .max(min_time + 1.0); // Ensure range
+
+    let datasets = vec![Dataset::default()
+        .marker(symbols::Marker::Braille)
+        .graph_type(GraphType::Line)
+        .style(Style::default().fg(Color::Cyan))
+        .data(&data)];
 
     let x_labels = vec![
         Span::raw(format!("{:.0}s", min_time)),
@@ -77,21 +81,25 @@ pub fn render_rx_graph(
                     format_bytes(peak_rx_speed),
                     format_total_bytes(total_rx_bytes)
                 ))
-                .title_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+                .title_style(
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
         )
         .x_axis(
             Axis::default()
                 .title("Time")
                 .style(Style::default().fg(Color::DarkGray))
                 .labels(x_labels)
-                .bounds([min_time, max_time])
+                .bounds([min_time, max_time]),
         )
         .y_axis(
             Axis::default()
                 .title("Speed")
                 .style(Style::default().fg(Color::DarkGray))
                 .labels(y_labels)
-                .bounds([0.0, max_rx])
+                .bounds([0.0, max_rx]),
         );
 
     frame.render_widget(chart, area);
@@ -113,7 +121,7 @@ pub fn render_tx_graph(
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(Color::Green))
                     .title(" TX Speed History ")
-                    .title_style(Style::default().fg(Color::Green))
+                    .title_style(Style::default().fg(Color::Green)),
             )
             .alignment(Alignment::Center);
         frame.render_widget(placeholder, area);
@@ -121,7 +129,8 @@ pub fn render_tx_graph(
     }
 
     // Prepare data for chart
-    let data: Vec<(f64, f64)> = history.timestamps
+    let data: Vec<(f64, f64)> = history
+        .timestamps
         .iter()
         .zip(history.tx_speeds.iter())
         .map(|(t, s)| (*t, *s))
@@ -129,17 +138,20 @@ pub fn render_tx_graph(
 
     // Dynamic scaling - use actual max
     let max_tx = history.max_tx.max(1.0); // Ensure minimum scale
-    
-    let min_time = history.timestamps.first().copied().unwrap_or(0.0);
-    let max_time = history.timestamps.last().copied().unwrap_or(100.0).max(min_time + 1.0); // Ensure range
 
-    let datasets = vec![
-        Dataset::default()
-            .marker(symbols::Marker::Braille)
-            .graph_type(GraphType::Line)
-            .style(Style::default().fg(Color::Green))
-            .data(&data),
-    ];
+    let min_time = history.timestamps.first().copied().unwrap_or(0.0);
+    let max_time = history
+        .timestamps
+        .last()
+        .copied()
+        .unwrap_or(100.0)
+        .max(min_time + 1.0); // Ensure range
+
+    let datasets = vec![Dataset::default()
+        .marker(symbols::Marker::Braille)
+        .graph_type(GraphType::Line)
+        .style(Style::default().fg(Color::Green))
+        .data(&data)];
 
     let x_labels = vec![
         Span::raw(format!("{:.0}s", min_time)),
@@ -164,21 +176,25 @@ pub fn render_tx_graph(
                     format_bytes(peak_tx_speed),
                     format_total_bytes(total_tx_bytes)
                 ))
-                .title_style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+                .title_style(
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
         )
         .x_axis(
             Axis::default()
                 .title("Time")
                 .style(Style::default().fg(Color::DarkGray))
                 .labels(x_labels)
-                .bounds([min_time, max_time])
+                .bounds([min_time, max_time]),
         )
         .y_axis(
             Axis::default()
                 .title("Speed")
                 .style(Style::default().fg(Color::DarkGray))
                 .labels(y_labels)
-                .bounds([0.0, max_tx])
+                .bounds([0.0, max_tx]),
         );
 
     frame.render_widget(chart, area);

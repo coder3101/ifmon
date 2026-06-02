@@ -24,20 +24,20 @@ impl SpeedHistory {
     pub fn push(&mut self, rx: f64, tx: f64, max_size: usize) {
         self.rx_speeds.push(rx);
         self.tx_speeds.push(tx);
-        
+
         let timestamp = if self.timestamps.is_empty() {
             0.0
         } else {
             self.timestamps.last().unwrap() + 1.0
         };
         self.timestamps.push(timestamp);
-        
+
         if self.rx_speeds.len() > max_size {
             self.rx_speeds.remove(0);
             self.tx_speeds.remove(0);
             self.timestamps.remove(0);
         }
-        
+
         self.max_rx = self.max_rx.max(rx).max(1.0);
         self.max_tx = self.max_tx.max(tx).max(1.0);
     }
