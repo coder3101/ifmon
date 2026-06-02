@@ -12,7 +12,7 @@ readme = "README.md"
 exclude = ["assets/"]
 
 [dependencies]
-crossterm = "0.28.1"
+crossterm = "0.29.0"
 ratatui = "0.30.0"
 color-eyre = "0.6.3"
 netdev = "0.43.0"
