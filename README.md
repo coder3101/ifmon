@@ -5,6 +5,8 @@ A beautiful terminal-based network interface monitoring tool built with Rust and
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)
 
+![ifmon screenshot](assets/ifmon.png)
+
 ## Features
 
 - 📊 **Real-time network speed monitoring** - Track RX/TX speeds with live updates

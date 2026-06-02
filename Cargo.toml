@@ -9,6 +9,7 @@ repository = "https://github.com/coder3101/ifmon"
 keywords = ["network", "monitoring", "tui", "terminal", "interface"]
 categories = ["command-line-utilities", "network-programming"]
 readme = "README.md"
+exclude = ["assets/"]
 
 [dependencies]
 crossterm = "0.28.1"
