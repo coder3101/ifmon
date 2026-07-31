@@ -7,7 +7,7 @@ use ratatui::{
     style::{Color, Modifier, Style, Stylize},
     symbols,
     text::{Line, Span},
-    widgets::{Block, Borders, Tabs},
+    widgets::{Block, Borders, Paragraph, Tabs, Wrap},
     DefaultTerminal, Frame,
 };
 
@@ -15,8 +15,14 @@ use crate::network::filter_interfaces;
 use crate::types::SpeedHistory;
 use crate::ui::{render_help, render_interface_info, render_rx_graph, render_tx_graph};
 
+/// Number of historical speed samples kept per interface.
 const HISTORY_SIZE: usize = 100;
-const UPDATE_INTERVAL: Duration = Duration::from_millis(500);
+/// Default time between samples if none is configured.
+const DEFAULT_UPDATE_INTERVAL: Duration = Duration::from_millis(500);
+/// Minimum elapsed time before a new speed sample is computed.
+const MIN_SAMPLE_ELAPSED: Duration = Duration::from_millis(100);
+/// Height of the interface info panel (in rows).
+const INFO_PANEL_HEIGHT: u16 = 14;
 
 /// Main application state
 #[derive(Debug)]
@@ -29,6 +35,7 @@ pub struct App {
     selected_interface: usize,
     show_help: bool,
     show_all_interfaces: bool,
+    update_interval: Duration,
     rx_speed: f64,
     tx_speed: f64,
     history: SpeedHistory,
@@ -36,12 +43,23 @@ pub struct App {
     total_tx_bytes: u64,
     peak_rx_speed: f64,
     peak_tx_speed: f64,
-    ip_scroll_offset: usize,
+    ipv4_scroll_offset: usize,
+    ipv6_scroll_offset: usize,
 }
 
 impl App {
-    /// Create a new application instance
+    /// The built-in default time between samples.
+    pub const fn default_update_interval() -> Duration {
+        DEFAULT_UPDATE_INTERVAL
+    }
+
+    /// Create a new application instance with the default update interval.
     pub fn new() -> Self {
+        Self::with_update_interval(Self::default_update_interval())
+    }
+
+    /// Create a new application instance with a custom update interval.
+    pub fn with_update_interval(update_interval: Duration) -> Self {
         let all_interfaces: Vec<Interface> = get_interfaces().into_iter().collect();
         let filtered = filter_interfaces(&all_interfaces);
 
@@ -54,18 +72,20 @@ impl App {
             selected_interface: 0,
             show_help: false,
             show_all_interfaces: false,
+            update_interval,
             rx_speed: 0.0,
             tx_speed: 0.0,
-            history: SpeedHistory::new(HISTORY_SIZE),
+            history: SpeedHistory::new(),
             total_rx_bytes: 0,
             total_tx_bytes: 0,
             peak_rx_speed: 0.0,
             peak_tx_speed: 0.0,
-            ip_scroll_offset: 0,
+            ipv4_scroll_offset: 0,
+            ipv6_scroll_offset: 0,
         }
     }
 
-    /// Get the list of active interfaces based on filter setting
+    /// Get the list of active interfaces based on the current filter setting.
     fn get_active_interfaces(&self) -> &Vec<Interface> {
         if self.show_all_interfaces {
             &self.interfaces
@@ -74,21 +94,26 @@ impl App {
         }
     }
 
-    /// Toggle between showing all interfaces and filtered interfaces
+    /// Toggle between showing all interfaces and filtered interfaces.
     fn toggle_interface_filter(&mut self) {
         self.show_all_interfaces = !self.show_all_interfaces;
         self.selected_interface = 0;
         self.reset_stats();
     }
 
-    /// Change to a different interface
+    /// Change to a different interface, ignoring out-of-range indices.
     fn change_interface(&mut self, idx: usize) {
+        let len = self.get_active_interfaces().len();
+        if len == 0 || idx >= len {
+            return;
+        }
         self.selected_interface = idx;
         self.reset_stats();
-        self.ip_scroll_offset = 0;
+        self.ipv4_scroll_offset = 0;
+        self.ipv6_scroll_offset = 0;
     }
 
-    /// Reset all statistics
+    /// Reset all statistics.
     fn reset_stats(&mut self) {
         self.last_stats = None;
         self.last_update_time = None;
@@ -101,28 +126,28 @@ impl App {
         self.peak_tx_speed = 0.0;
     }
 
-    /// Get the currently selected interface
-    fn get_selected_interface(&mut self) -> Option<Interface> {
+    /// Get the currently selected interface.
+    fn get_selected_interface(&self) -> Option<Interface> {
         self.get_active_interfaces()
             .get(self.selected_interface)
             .cloned()
     }
 
-    /// Run the application's main loop
+    /// Run the application's main loop.
     pub fn run(mut self, mut terminal: DefaultTerminal) -> color_eyre::Result<()> {
         self.running = true;
         while self.running {
             terminal.draw(|frame| self.render(frame))?;
 
-            // Poll for events with timeout to allow UI updates
-            if event::poll(UPDATE_INTERVAL)? {
+            // Poll for events with a timeout to allow periodic UI updates.
+            if event::poll(self.update_interval)? {
                 self.handle_crossterm_events()?;
             }
         }
         Ok(())
     }
 
-    /// Render the user interface
+    /// Render the user interface.
     fn render(&mut self, frame: &mut Frame) {
         if self.show_help {
             render_help(frame);
@@ -184,12 +209,32 @@ impl App {
         frame.render_widget(block, frame.area());
         frame.render_widget(tabs, top);
 
-        self.render_interface(frame, main);
+        self.render_main(frame, main);
     }
 
-    /// Render the interface details and graphs
+    /// Render the main content area, showing an empty state when no interfaces exist.
+    fn render_main(&mut self, frame: &mut Frame, area: Rect) {
+        if self.get_active_interfaces().is_empty() {
+            let placeholder = Paragraph::new(
+                "No network interfaces to display.\n\nPress 'f' to toggle showing all interfaces.",
+            )
+            .alignment(Alignment::Center)
+            .wrap(Wrap { trim: true })
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::DarkGray))
+                    .title(" No Interfaces "),
+            );
+            frame.render_widget(placeholder, area);
+            return;
+        }
+        self.render_interface(frame, area);
+    }
+
+    /// Render the interface details and graphs.
     fn render_interface(&mut self, frame: &mut Frame, area: Rect) {
-        let layout = Layout::vertical([Constraint::Length(14), Constraint::Fill(1)]);
+        let layout = Layout::vertical([Constraint::Length(INFO_PANEL_HEIGHT), Constraint::Fill(1)]);
         let sections = layout.split(area);
         let top_area = sections[0];
         let bottom_area = sections[1];
@@ -203,16 +248,17 @@ impl App {
             // Then calculate speed based on updated stats
             if let Some(last_stats) = &self.last_stats {
                 if let Some(last_time) = self.last_update_time {
-                    let elapsed = now.duration_since(last_time).as_secs_f64();
-                    if elapsed > 0.1 {
+                    let elapsed = now.duration_since(last_time);
+                    if elapsed >= MIN_SAMPLE_ELAPSED {
                         // Only update if enough time has passed
                         if let Some(current_stats) = &interface.stats {
                             let rx_diff =
                                 current_stats.rx_bytes.saturating_sub(last_stats.rx_bytes) as f64;
                             let tx_diff =
                                 current_stats.tx_bytes.saturating_sub(last_stats.tx_bytes) as f64;
-                            self.rx_speed = rx_diff / elapsed;
-                            self.tx_speed = tx_diff / elapsed;
+                            let secs = elapsed.as_secs_f64();
+                            self.rx_speed = rx_diff / secs;
+                            self.tx_speed = tx_diff / secs;
 
                             self.peak_rx_speed = self.peak_rx_speed.max(self.rx_speed);
                             self.peak_tx_speed = self.peak_tx_speed.max(self.tx_speed);
@@ -237,12 +283,18 @@ impl App {
                 self.total_tx_bytes = stats.tx_bytes;
             }
 
-            render_interface_info(frame, top_area, &interface, self.ip_scroll_offset);
+            render_interface_info(
+                frame,
+                top_area,
+                &interface,
+                self.ipv4_scroll_offset,
+                self.ipv6_scroll_offset,
+            );
             self.render_graphs_section(frame, bottom_area);
         }
     }
 
-    /// Render the speed graphs section
+    /// Render the speed graphs section.
     fn render_graphs_section(&self, frame: &mut Frame, area: Rect) {
         let layout = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]);
         let sections = layout.split(area);
@@ -268,7 +320,7 @@ impl App {
         );
     }
 
-    /// Read and handle crossterm events
+    /// Read and handle crossterm events.
     fn handle_crossterm_events(&mut self) -> color_eyre::Result<()> {
         match event::read()? {
             Event::Key(key) if key.kind == KeyEventKind::Press => self.on_key_event(key),
@@ -279,7 +331,7 @@ impl App {
         Ok(())
     }
 
-    /// Handle key events
+    /// Handle key events.
     fn on_key_event(&mut self, key: KeyEvent) {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc) if self.show_help => {
@@ -293,15 +345,18 @@ impl App {
                 self.toggle_interface_filter();
             }
             (_, KeyCode::Up) => {
-                if self.ip_scroll_offset > 0 {
-                    self.ip_scroll_offset -= 1;
-                }
+                self.ipv4_scroll_offset = self.ipv4_scroll_offset.saturating_sub(1);
+                self.ipv6_scroll_offset = self.ipv6_scroll_offset.saturating_sub(1);
             }
             (_, KeyCode::Down) => {
-                self.ip_scroll_offset += 1;
+                self.ipv4_scroll_offset += 1;
+                self.ipv6_scroll_offset += 1;
             }
             (KeyModifiers::SHIFT, KeyCode::Tab) => {
                 let len = self.get_active_interfaces().len();
+                if len == 0 {
+                    return;
+                }
                 let new_idx = if self.selected_interface == 0 {
                     len - 1
                 } else {
@@ -311,6 +366,9 @@ impl App {
             }
             (_, KeyCode::Tab) => {
                 let len = self.get_active_interfaces().len();
+                if len == 0 {
+                    return;
+                }
                 let new_idx = (self.selected_interface + 1) % len;
                 self.change_interface(new_idx);
             }
@@ -318,7 +376,7 @@ impl App {
         }
     }
 
-    /// Set running to false to quit the application
+    /// Set running to false to quit the application.
     fn quit(&mut self) {
         self.running = false;
     }

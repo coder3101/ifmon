@@ -18,7 +18,7 @@
 - 🌐 **IPv4 & IPv6** - Full support for both address families with scrollable display
 - 🎨 **Clean Interface** - Professional TUI with color-coded stats and minimal design
 - ⚡ **Lightweight** - Minimal CPU and memory footprint, perfect for always-on monitoring
-- 🔧 **Cross-Platform** - Works on Linux, macOS, and BSD systems
+- 🔧 **Cross-Platform** - Works on Linux, macOS, BSD, and Windows systems
 
 ## Quick Start
 
@@ -58,6 +58,13 @@ Simply run:
 
 ```bash
 ifmon
+```
+
+Optionally configure the sample/update interval (in milliseconds, minimum 50ms):
+
+```bash
+ifmon 250                                  # positional argument
+IFMON_UPDATE_INTERVAL_MS=250 ifmon         # or via environment variable
 ```
 
 The interface displays three main sections:
@@ -102,7 +109,7 @@ Modern network monitoring tools are often complex or require root privileges. `i
 
 - **Rust**: 1.70 or higher (for building)
 - **Terminal**: Unicode and color support recommended
-- **OS**: Linux, macOS, or BSD systems
+- **OS**: Linux, macOS, BSD, or Windows systems
 
 ## Building from Source
 
@@ -111,6 +118,51 @@ git clone https://github.com/coder3101/ifmon.git
 cd ifmon
 cargo build --release
 ```
+
+The release binary includes size optimizations (LTO, stripped symbols) and will be available at `target/release/ifmon`.
+
+## Project Structure
+
+Clean, modular architecture for maintainability:
+
+```
+src/
+├── main.rs              Entry point and error handling
+├── app.rs               Application state and event loop
+├── types/
+│   └── history.rs       SpeedHistory data structure
+├── network/
+│   └── filter.rs        Interface filtering logic
+├── ui/
+│   ├── graphs.rs        RX/TX line chart rendering
+│   ├── interface.rs     Interface info table
+│   └── help.rs          Help screen
+└── utils/
+    └── format.rs        Byte/speed formatting utilities
+```
+
+## Contributing
+
+Contributions are welcome! Areas for improvement:
+
+- [ ] More graph types (bar charts, histograms)
+- [ ] Export statistics to CSV/JSON
+- [ ] Packet count tracking
+- [ ] Error/drop rate monitoring
+- [x] Customizable update intervals (via CLI arg or `IFMON_UPDATE_INTERVAL_MS`)
+- [x] Peak decay (graph rescales to the current window instead of a historical spike)
+- [ ] Color theme customization
+
+Please feel free to:
+- Report bugs via [GitHub Issues](https://github.com/coder3101/ifmon/issues)
+- Submit Pull Requests
+- Suggest new features
+
+## Roadmap
+
+- **v0.2.0**: Export functionality and packet statistics
+- **v0.3.0**: Configurable themes and layouts
+- **v1.0.0**: Stable API with plugin support
 
 ## License
 

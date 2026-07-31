@@ -1,31 +1,37 @@
-/// Format bytes per second into human-readable format
+/// Scale a byte value down to a human-friendly magnitude with its unit.
+fn scale(bytes: f64) -> (f64, &'static str) {
+    let kib = 1024.0;
+    let mib = 1024.0 * 1024.0;
+    let gib = 1024.0 * 1024.0 * 1024.0;
+
+    if bytes < kib {
+        (bytes, "B")
+    } else if bytes < mib {
+        (bytes / kib, "KB")
+    } else if bytes < gib {
+        (bytes / mib, "MB")
+    } else {
+        (bytes / gib, "GB")
+    }
+}
+
+/// Format bytes per second into a human-readable rate.
 pub fn format_bytes(bytes: f64) -> String {
-    if bytes < 1024.0 {
-        format!("{:.2} B/s", bytes)
-    } else if bytes < 1024.0 * 1024.0 {
-        format!("{:.2} KB/s", bytes / 1024.0)
-    } else if bytes < 1024.0 * 1024.0 * 1024.0 {
-        format!("{:.2} MB/s", bytes / (1024.0 * 1024.0))
-    } else {
-        format!("{:.2} GB/s", bytes / (1024.0 * 1024.0 * 1024.0))
-    }
+    let (v, unit) = scale(bytes);
+    format!("{v:.2} {unit}/s")
 }
 
-/// Format total bytes into human-readable format
+/// Format total bytes into a human-readable quantity.
 pub fn format_total_bytes(bytes: u64) -> String {
-    let bytes = bytes as f64;
-    if bytes < 1024.0 {
-        format!("{:.0} B", bytes)
-    } else if bytes < 1024.0 * 1024.0 {
-        format!("{:.2} KB", bytes / 1024.0)
-    } else if bytes < 1024.0 * 1024.0 * 1024.0 {
-        format!("{:.2} MB", bytes / (1024.0 * 1024.0))
+    let (v, unit) = scale(bytes as f64);
+    if unit == "B" {
+        format!("{v:.0} {unit}")
     } else {
-        format!("{:.2} GB", bytes / (1024.0 * 1024.0 * 1024.0))
+        format!("{v:.2} {unit}")
     }
 }
 
-/// Format optional value to string
+/// Format an optional value to a string, using "-" when absent.
 pub fn format_optional<T: std::fmt::Display>(opt: &Option<T>) -> String {
     match opt {
         Some(n) => n.to_string(),
