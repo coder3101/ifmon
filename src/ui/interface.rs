@@ -1,7 +1,7 @@
 use netdev::Interface;
 use ratatui::{
     layout::{Constraint, Rect},
-    style::{Color, Style},
+    style::Style,
     text::Span,
     widgets::{Block, Borders, Row, Table},
     Frame,
@@ -9,12 +9,14 @@ use ratatui::{
 
 use crate::utils::format_optional;
 
+use super::theme::THEME;
+
 /// How many IPv4/IPv6 rows can be displayed at once in the fixed-height panel.
 const IPV4_ROWS: usize = 2;
 const IPV6_ROWS: usize = 1;
 
 fn header_span(text: &str) -> Span<'_> {
-    Span::styled(text, Style::default().fg(Color::Yellow))
+    Span::styled(text, Style::default().fg(THEME.highlight_fg))
 }
 
 /// Build rows for one address family, applying a family-specific scroll offset.
@@ -46,7 +48,7 @@ fn address_rows<'a, T: std::fmt::Display>(
             Span::raw(""),
             Span::styled(
                 format!("(+{remaining} more, use \u{2191}\u{2193})"),
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(THEME.dim),
             ),
         ]));
     }
@@ -81,9 +83,9 @@ pub fn render_interface_info(
             Span::styled(
                 format!("{:?}", interface.oper_state),
                 Style::default().fg(if format!("{:?}", interface.oper_state).contains("Up") {
-                    Color::Green
+                    THEME.ok
                 } else {
-                    Color::Red
+                    THEME.danger
                 }),
             ),
         ]),
@@ -106,9 +108,9 @@ pub fn render_interface_info(
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::DarkGray))
+                .border_style(Style::default().fg(THEME.border))
                 .title(" Interface Info ")
-                .title_style(Style::default().fg(Color::Cyan)),
+                .title_style(Style::default().fg(THEME.accent)),
         )
         .column_spacing(2);
 

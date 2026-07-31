@@ -67,20 +67,27 @@ ifmon 250                                  # positional argument
 IFMON_UPDATE_INTERVAL_MS=250 ifmon         # or via environment variable
 ```
 
-The interface displays three main sections:
-1. **Interface Info** - Shows name, type, MAC, MTU, state, and IP addresses
-2. **RX Graph** - Download speeds with current/peak/total statistics  
-3. **TX Graph** - Upload speeds with current/peak/total statistics
+The interface displays four main sections:
+1. **Sidebar** - Live list of interfaces with current download/upload speeds
+2. **Interface Info** - Shows name, type, MAC, MTU, state, and IP addresses
+3. **RX Graph** - Download speeds with current/peak/total statistics  
+4. **TX Graph** - Upload speeds with current/peak/total statistics
+5. **Status Bar** - Current interface, filter mode, sample interval, and cumulative totals
+
+Colors and styling are centralized in a theme, and the current speed is overlaid on each graph.
 
 ### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `Tab` | Switch to next interface |
-| `Shift+Tab` | Switch to previous interface |
+| `Tab` / `j` | Switch to next interface |
+| `Shift+Tab` / `k` | Switch to previous interface |
+| `1`-`9` | Jump to interface by number |
+| Mouse click | Select an interface from the sidebar |
+| Mouse wheel | Scroll through IP addresses |
+| `↑` / `↓` | Scroll through IP addresses (when multiple IPs) |
 | `f` | Toggle between all interfaces / physical only |
 | `h` | Show/hide help screen |
-| `↑` / `↓` | Scroll through IP addresses (when multiple IPs) |
 | `q` or `Esc` | Quit application |
 
 ### What Gets Displayed
@@ -134,8 +141,10 @@ src/
 ├── network/
 │   └── filter.rs        Interface filtering logic
 ├── ui/
-│   ├── graphs.rs        RX/TX line chart rendering
+│   ├── graphs.rs        RX/TX line chart rendering (with speed overlay)
 │   ├── interface.rs     Interface info table
+│   ├── sidebar.rs       Left-hand interface list with live speeds
+│   ├── theme.rs         Centralized color/style theme
 │   └── help.rs          Help screen
 └── utils/
     └── format.rs        Byte/speed formatting utilities

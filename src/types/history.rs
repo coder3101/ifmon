@@ -21,8 +21,15 @@ impl SpeedHistory {
     }
 
     /// Add a new speed measurement, evicting the oldest sample when over capacity.
-    pub fn push(&mut self, rx: f64, tx: f64, max_size: usize) {
-        let timestamp = self.timestamps.back().copied().unwrap_or(-1.0) + 1.0;
+    ///
+    /// `delta_secs` is the real elapsed time since the previous sample, so the
+    /// timestamps reflect actual seconds and the graph's time axis is accurate
+    /// regardless of the configured sample interval.
+    pub fn push(&mut self, rx: f64, tx: f64, delta_secs: f64, max_size: usize) {
+        let timestamp = match self.timestamps.back() {
+            Some(&last) => last + delta_secs,
+            None => 0.0,
+        };
 
         self.rx_speeds.push_back(rx);
         self.tx_speeds.push_back(tx);
@@ -61,7 +68,7 @@ mod tests {
     fn respects_capacity() {
         let mut h = SpeedHistory::new();
         for i in 0..10 {
-            h.push(i as f64, i as f64, 5);
+            h.push(i as f64, i as f64, 1.0, 5);
         }
         assert_eq!(h.rx_speeds.len(), 5);
         // Oldest 5 samples evicted.
@@ -70,28 +77,30 @@ mod tests {
     }
 
     #[test]
-    fn timestamps_are_sequential() {
+    fn timestamps_are_cumulative_real_seconds() {
         let mut h = SpeedHistory::new();
-        h.push(1.0, 1.0, 10);
-        h.push(2.0, 2.0, 10);
-        assert_eq!(h.timestamps, VecDeque::from([0.0, 1.0]));
+        // The first sample anchors at t=0; subsequent deltas accumulate real seconds.
+        h.push(1.0, 1.0, 0.5, 10);
+        h.push(2.0, 2.0, 1.25, 10);
+        h.push(3.0, 3.0, 1.25, 10);
+        assert_eq!(h.timestamps, VecDeque::from([0.0, 1.25, 2.5]));
     }
 
     #[test]
     fn max_reflects_window_not_all_time_history() {
         let mut h = SpeedHistory::new();
         // A single early spike should not pin the max forever.
-        h.push(1000.0, 1.0, 3);
-        h.push(1.0, 1.0, 3);
-        h.push(1.0, 1.0, 3);
-        h.push(1.0, 1.0, 3); // evicts the 1000.0 sample
+        h.push(1000.0, 1.0, 1.0, 3);
+        h.push(1.0, 1.0, 1.0, 3);
+        h.push(1.0, 1.0, 1.0, 3);
+        h.push(1.0, 1.0, 1.0, 3); // evicts the 1000.0 sample
         assert_eq!(h.max_rx(), 1.0);
     }
 
     #[test]
     fn max_never_below_min_scale() {
         let mut h = SpeedHistory::new();
-        h.push(0.0, 0.0, 10);
+        h.push(0.0, 0.0, 1.0, 10);
         assert_eq!(h.max_rx(), MIN_SCALE);
         assert_eq!(h.max_tx(), MIN_SCALE);
     }
@@ -107,7 +116,7 @@ mod tests {
     #[test]
     fn clear_resets_everything() {
         let mut h = SpeedHistory::new();
-        h.push(5.0, 7.0, 10);
+        h.push(5.0, 7.0, 1.0, 10);
         h.clear();
         assert!(h.rx_speeds.is_empty());
         assert_eq!(h.max_rx(), MIN_SCALE);
