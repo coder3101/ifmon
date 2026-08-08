@@ -1,7 +1,7 @@
 use netdev::Interface;
 use ratatui::{
     layout::{Constraint, Rect},
-    style::{Color, Style},
+    style::Style,
     text::Span,
     widgets::{Block, Borders, Row, Table},
     Frame,
@@ -9,117 +9,108 @@ use ratatui::{
 
 use crate::utils::format_optional;
 
-/// Render the interface information panel
+use super::theme::THEME;
+
+/// How many IPv4/IPv6 rows can be displayed at once in the fixed-height panel.
+const IPV4_ROWS: usize = 2;
+const IPV6_ROWS: usize = 1;
+
+fn header_span(text: &str) -> Span<'_> {
+    Span::styled(text, Style::default().fg(THEME.highlight_fg))
+}
+
+/// Build rows for one address family, applying a family-specific scroll offset.
+fn address_rows<'a, T: std::fmt::Display>(
+    label: &'a str,
+    addrs: &[T],
+    scroll_offset: usize,
+    max_rows: usize,
+) -> Vec<Row<'a>> {
+    if addrs.is_empty() {
+        return vec![Row::new(vec![header_span(label), Span::raw("-")])];
+    }
+
+    let start = scroll_offset.min(addrs.len().saturating_sub(max_rows));
+
+    let mut rows = Vec::new();
+    let mut shown = 0;
+    for (i, ip) in addrs.iter().skip(start).take(max_rows).enumerate() {
+        rows.push(Row::new(vec![
+            header_span(if i == 0 { label } else { "" }),
+            Span::raw(ip.to_string()),
+        ]));
+        shown += 1;
+    }
+
+    let remaining = addrs.len() - start - shown;
+    if remaining > 0 {
+        rows.push(Row::new(vec![
+            Span::raw(""),
+            Span::styled(
+                format!("(+{remaining} more, use \u{2191}\u{2193})"),
+                Style::default().fg(THEME.dim),
+            ),
+        ]));
+    }
+
+    rows
+}
+
+/// Render the interface information panel.
 pub fn render_interface_info(
     frame: &mut Frame,
     area: Rect,
     interface: &Interface,
-    ip_scroll_offset: usize,
+    ipv4_scroll_offset: usize,
+    ipv6_scroll_offset: usize,
 ) {
-    // Build rows with basic info
     let mut rows: Vec<Row> = vec![
+        Row::new(vec![header_span("Name"), Span::raw(interface.name.clone())]),
         Row::new(vec![
-            Span::styled("Name", Style::default().fg(Color::Yellow)),
-            Span::raw(interface.name.clone()),
-        ]),
-        Row::new(vec![
-            Span::styled("Type", Style::default().fg(Color::Yellow)),
+            header_span("Type"),
             Span::raw(interface.if_type.name()),
         ]),
         Row::new(vec![
-            Span::styled("MAC", Style::default().fg(Color::Yellow)),
+            header_span("MAC"),
             Span::raw(format_optional(&interface.mac_addr.map(|m| m.to_string()))),
         ]),
         Row::new(vec![
-            Span::styled("MTU", Style::default().fg(Color::Yellow)),
+            header_span("MTU"),
             Span::raw(format_optional(&interface.mtu)),
         ]),
         Row::new(vec![
-            Span::styled("State", Style::default().fg(Color::Yellow)),
+            header_span("State"),
             Span::styled(
                 format!("{:?}", interface.oper_state),
                 Style::default().fg(if format!("{:?}", interface.oper_state).contains("Up") {
-                    Color::Green
+                    THEME.ok
                 } else {
-                    Color::Red
+                    THEME.danger
                 }),
             ),
         ]),
     ];
 
-    // Add IPv4 addresses (each on its own line)
-    if interface.ipv4.is_empty() {
-        rows.push(Row::new(vec![
-            Span::styled("IPv4", Style::default().fg(Color::Yellow)),
-            Span::raw("-"),
-        ]));
-    } else {
-        for (i, ip) in interface
-            .ipv4
-            .iter()
-            .skip(ip_scroll_offset)
-            .take(2)
-            .enumerate()
-        {
-            rows.push(Row::new(vec![
-                Span::styled(
-                    if i == 0 { "IPv4" } else { "" },
-                    Style::default().fg(Color::Yellow),
-                ),
-                Span::raw(ip.to_string()),
-            ]));
-        }
-        if interface.ipv4.len() > 2 {
-            rows.push(Row::new(vec![
-                Span::raw(""),
-                Span::styled(
-                    format!("(+{} more)", interface.ipv4.len() - 2),
-                    Style::default().fg(Color::DarkGray),
-                ),
-            ]));
-        }
-    }
-
-    // Add IPv6 addresses (each on its own line)
-    if interface.ipv6.is_empty() {
-        rows.push(Row::new(vec![
-            Span::styled("IPv6", Style::default().fg(Color::Yellow)),
-            Span::raw("-"),
-        ]));
-    } else {
-        for (i, ip) in interface
-            .ipv6
-            .iter()
-            .skip(ip_scroll_offset)
-            .take(1)
-            .enumerate()
-        {
-            rows.push(Row::new(vec![
-                Span::styled(
-                    if i == 0 { "IPv6" } else { "" },
-                    Style::default().fg(Color::Yellow),
-                ),
-                Span::raw(ip.to_string()),
-            ]));
-        }
-        if interface.ipv6.len() > 1 {
-            rows.push(Row::new(vec![
-                Span::raw(""),
-                Span::styled(
-                    format!("(+{} more, use ↑↓)", interface.ipv6.len() - 1),
-                    Style::default().fg(Color::DarkGray),
-                ),
-            ]));
-        }
-    }
+    rows.extend(address_rows(
+        "IPv4",
+        &interface.ipv4,
+        ipv4_scroll_offset,
+        IPV4_ROWS,
+    ));
+    rows.extend(address_rows(
+        "IPv6",
+        &interface.ipv6,
+        ipv6_scroll_offset,
+        IPV6_ROWS,
+    ));
 
     let content = Table::new(rows, [Constraint::Length(12), Constraint::Fill(1)])
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::DarkGray))
+                .border_style(Style::default().fg(THEME.border))
                 .title(" Interface Info ")
-                .title_style(Style::default().fg(Color::Cyan)),
+                .title_style(Style::default().fg(THEME.accent)),
         )
         .column_spacing(2);
 

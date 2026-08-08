@@ -18,7 +18,7 @@
 - 🌐 **IPv4 & IPv6** - Full support for both address families with scrollable display
 - 🎨 **Clean Interface** - Professional TUI with color-coded stats and minimal design
 - ⚡ **Lightweight** - Minimal CPU and memory footprint, perfect for always-on monitoring
-- 🔧 **Cross-Platform** - Works on Linux, macOS, and BSD systems
+- 🔧 **Cross-Platform** - Works on Linux, macOS, BSD, and Windows systems
 
 ## Quick Start
 
@@ -60,20 +60,34 @@ Simply run:
 ifmon
 ```
 
-The interface displays three main sections:
-1. **Interface Info** - Shows name, type, MAC, MTU, state, and IP addresses
-2. **RX Graph** - Download speeds with current/peak/total statistics  
-3. **TX Graph** - Upload speeds with current/peak/total statistics
+Optionally configure the sample/update interval (in milliseconds, minimum 50ms):
+
+```bash
+ifmon 250                                  # positional argument
+IFMON_UPDATE_INTERVAL_MS=250 ifmon         # or via environment variable
+```
+
+The interface displays four main sections:
+1. **Sidebar** - Live list of interfaces with current download/upload speeds
+2. **Interface Info** - Shows name, type, MAC, MTU, state, and IP addresses
+3. **RX Graph** - Download speeds with current/peak/total statistics  
+4. **TX Graph** - Upload speeds with current/peak/total statistics
+5. **Status Bar** - Current interface, filter mode, sample interval, and cumulative totals
+
+Colors and styling are centralized in a theme, and the current speed is overlaid on each graph.
 
 ### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `Tab` | Switch to next interface |
-| `Shift+Tab` | Switch to previous interface |
+| `Tab` / `j` | Switch to next interface |
+| `Shift+Tab` / `k` | Switch to previous interface |
+| `1`-`9` | Jump to interface by number |
+| Mouse click | Select an interface from the sidebar |
+| Mouse wheel | Scroll through IP addresses |
+| `↑` / `↓` | Scroll through IP addresses (when multiple IPs) |
 | `f` | Toggle between all interfaces / physical only |
 | `h` | Show/hide help screen |
-| `↑` / `↓` | Scroll through IP addresses (when multiple IPs) |
 | `q` or `Esc` | Quit application |
 
 ### What Gets Displayed
@@ -102,7 +116,7 @@ Modern network monitoring tools are often complex or require root privileges. `i
 
 - **Rust**: 1.70 or higher (for building)
 - **Terminal**: Unicode and color support recommended
-- **OS**: Linux, macOS, or BSD systems
+- **OS**: Linux, macOS, BSD, or Windows systems
 
 ## Building from Source
 
@@ -111,6 +125,53 @@ git clone https://github.com/coder3101/ifmon.git
 cd ifmon
 cargo build --release
 ```
+
+The release binary includes size optimizations (LTO, stripped symbols) and will be available at `target/release/ifmon`.
+
+## Project Structure
+
+Clean, modular architecture for maintainability:
+
+```
+src/
+├── main.rs              Entry point and error handling
+├── app.rs               Application state and event loop
+├── types/
+│   └── history.rs       SpeedHistory data structure
+├── network/
+│   └── filter.rs        Interface filtering logic
+├── ui/
+│   ├── graphs.rs        RX/TX line chart rendering (with speed overlay)
+│   ├── interface.rs     Interface info table
+│   ├── sidebar.rs       Left-hand interface list with live speeds
+│   ├── theme.rs         Centralized color/style theme
+│   └── help.rs          Help screen
+└── utils/
+    └── format.rs        Byte/speed formatting utilities
+```
+
+## Contributing
+
+Contributions are welcome! Areas for improvement:
+
+- [ ] More graph types (bar charts, histograms)
+- [ ] Export statistics to CSV/JSON
+- [ ] Packet count tracking
+- [ ] Error/drop rate monitoring
+- [x] Customizable update intervals (via CLI arg or `IFMON_UPDATE_INTERVAL_MS`)
+- [x] Peak decay (graph rescales to the current window instead of a historical spike)
+- [ ] Color theme customization
+
+Please feel free to:
+- Report bugs via [GitHub Issues](https://github.com/coder3101/ifmon/issues)
+- Submit Pull Requests
+- Suggest new features
+
+## Roadmap
+
+- **v0.2.0**: Export functionality and packet statistics
+- **v0.3.0**: Configurable themes and layouts
+- **v1.0.0**: Stable API with plugin support
 
 ## License
 
