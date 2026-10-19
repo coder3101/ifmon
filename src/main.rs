@@ -1,52 +1,51 @@
-mod app;
-mod network;
-mod types;
-mod ui;
-mod utils;
+mod cli;
+mod commands;
+mod config;
+mod net;
+mod settings;
+mod theme;
+mod tui;
+mod units;
 
-use std::time::Duration;
+use std::io::IsTerminal;
+use std::process::ExitCode;
 
-use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture},
-    execute,
-};
-use ratatui::DefaultTerminal;
+use clap::{CommandFactory, Parser};
+use color_eyre::eyre::Result;
 
-use crate::app::App;
+use crate::cli::{Cli, Command};
+use crate::settings::Settings;
 
-/// Parse an update interval (in milliseconds) from an optional CLI argument or
-/// the `IFMON_UPDATE_INTERVAL_MS` environment variable. Returns `None` to use the default.
-fn parse_update_interval() -> Option<Duration> {
-    let raw = std::env::args()
-        .nth(1)
-        .or_else(|| std::env::var("IFMON_UPDATE_INTERVAL_MS").ok())?;
-
-    raw.parse::<u64>()
-        .ok()
-        .map(|ms| Duration::from_millis(ms.max(50))) // enforce a sane lower bound
-}
-
-/// Build the app, optionally with a custom update interval.
-fn build_app() -> App {
-    match parse_update_interval() {
-        Some(interval) => App::with_update_interval(interval),
-        None => App::new(),
+fn main() -> ExitCode {
+    // Keeps rich reports for panics; ordinary errors are printed tersely below.
+    let _ = color_eyre::install();
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            let prefix = if std::io::stderr().is_terminal() {
+                "\x1b[1;31merror:\x1b[0m"
+            } else {
+                "error:"
+            };
+            eprintln!("{prefix} {err:#}");
+            ExitCode::FAILURE
+        }
     }
 }
 
-fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
-    let mut terminal = ratatui::init();
-    execute!(std::io::stdout(), EnableMouseCapture)?;
+fn run() -> Result<()> {
+    let cli = Cli::parse_from(cli::normalize_args(std::env::args_os()));
 
-    let result = run_app(&mut terminal);
-
-    let _ = execute!(std::io::stdout(), DisableMouseCapture);
-    ratatui::restore();
-    result
-}
-
-fn run_app(terminal: &mut DefaultTerminal) -> color_eyre::Result<()> {
-    let mut app = build_app();
-    app.run(terminal)
+    match &cli.command {
+        Some(Command::Completions { shell }) => {
+            clap_complete::generate(*shell, &mut Cli::command(), "ifmon", &mut std::io::stdout());
+            Ok(())
+        }
+        Some(Command::Config { action }) => {
+            commands::config::run(*action, cli.common.config.as_deref())
+        }
+        Some(Command::List(args)) => commands::list::run(&Settings::resolve(&cli)?, args),
+        Some(Command::Watch(args)) => commands::watch::run(&Settings::resolve(&cli)?, args),
+        None => tui::run(Settings::resolve(&cli)?),
+    }
 }

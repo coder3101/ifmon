@@ -1,22 +1,56 @@
 [package]
 name = "ifmon"
-version = "0.1.0"
-description = "A beautiful terminal-based network interface monitoring tool"
+version = "0.2.0"
+description = "A beautiful, feature-rich terminal network interface monitor"
 authors = ["coder3101 <ashar786khan@gmail.com>"]
 license = "MIT"
-edition = "2021"
+edition = "2024"
+rust-version = "1.88"
 repository = "https://github.com/coder3101/ifmon"
-keywords = ["network", "monitoring", "tui", "terminal", "interface"]
+keywords = ["network", "monitoring", "tui", "bandwidth", "interface"]
 categories = ["command-line-utilities", "network-programming"]
 readme = "README.md"
 exclude = ["assets/"]
 
 [dependencies]
-crossterm = "0.29.0"
-ratatui = "0.30.0"
+clap = { version = "4.6.7", features = ["derive", "env", "wrap_help", "cargo"] }
+clap_complete = "4.6.11"
 color-eyre = "0.6.3"
+crossterm = "0.29.0"
+dirs = "7.0.0"
+jiff = "0.2.38"
 netdev = "0.46.3"
+ratatui = "0.30.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+toml = "1.1.8"
 unicode-width = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2.191"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_Networking_WinSock",
+] }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+float_cmp = "allow"
+struct_excessive_bools = "allow"
+unreadable_literal = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+too_many_lines = "allow"
 
 # Read the optimization guideline for more details: https://ratatui.rs/recipes/apps/release-your-app/#optimizations
 [profile.release]
